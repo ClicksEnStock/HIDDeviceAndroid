@@ -9,6 +9,7 @@ import Runtime.MMFRuntime;
 import Services.CBinaryFile;
 import Objects.CObject;
 import Services.CServices;
+import Runtime.Log;
 
 import java.nio.charset.Charset;
 
@@ -28,7 +29,7 @@ import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbEndpoint;
 import android.hardware.usb.UsbInterface;
 import android.hardware.usb.UsbManager;
-import android.util.Log;
+
  
 /**
  * This class is used for talking to hid device, connecting, disconnecting and enumerating the devices.
@@ -152,25 +153,32 @@ public class CRunHIDDevice extends CRunExtension
 		int formatType=0;
 		int reportId=0;
 		int deviceId = 0;
-        switch (num)
-        {
-            case ACT_EnumerateAllDevices:
-                EnumerateAllDevices();
-            case ACT_OpenDevice:
-				deviceId = act.getParamExpression(rh, 0);
-                OpenDevice(deviceId);
-			case ACT_CloseDevice:
-				CloseDevice();
-			case ACT_SendReport:
-				report = act.getParamExpString(rh, 0);
-				formatType = act.getParamExpression(rh, 1);
-				SendReport(report, formatType, 0);
-			case ACT_SendReportWithId:
-				report = act.getParamExpString(rh, 0);
-				formatType = act.getParamExpression(rh, 1);
-				reportId = act.getParamExpression(rh, 2);
-				SendReport(report, formatType, reportId);
-        }
+		try 
+		{
+			switch (num)
+			{
+				case ACT_EnumerateAllDevices:
+					EnumerateAllDevices();
+				case ACT_OpenDevice:
+					deviceId = act.getParamExpression(rh, 0);
+					OpenDevice(deviceId);
+				case ACT_CloseDevice:
+					CloseDevice();
+				case ACT_SendReport:
+					report = act.getParamExpString(rh, 0);
+					formatType = act.getParamExpression(rh, 1);
+					SendReport(report, formatType, 0);
+				case ACT_SendReportWithId:
+					report = act.getParamExpString(rh, 0);
+					formatType = act.getParamExpression(rh, 1);
+					reportId = act.getParamExpression(rh, 2);
+					SendReport(report, formatType, reportId);
+			}
+		}
+		catch (Exception e) {
+			Log.Log("exception caught by action:" + e.toString());
+			_lastError = e.toString();
+		}
     }
 
     // Expressions
@@ -384,8 +392,7 @@ public class CRunHIDDevice extends CRunExtension
 	 * @return true if succeed.
 	 */
 	private boolean WriteData(byte[] bytes) {
-		try
-		{
+		
 			// Lock that is common for read/write methods.
 			synchronized (_locker) {
 				UsbInterface writeIntf = _usbDevice.getInterface(0);
@@ -407,11 +414,6 @@ public class CRunHIDDevice extends CRunExtension
 				writeConnection.close();
 			}
 			
-		} catch(NullPointerException e)
-		{
-			_lastError = "Error happened while writing: " + Log.getStackTraceString(e);
-			return false;
-		}
 		return true;
 	}
 	
@@ -521,9 +523,6 @@ public class CRunHIDDevice extends CRunExtension
 						readConnection.close();
 						} 
 					
-					catch (NullPointerException e) {
-						_lastError = "Error happened while reading: " + Log.getStackTraceString(e);
-					}
 					catch (ThreadDeath e) {
 						if (readConnection != null) {
 							readConnection.releaseInterface(readIntf);
